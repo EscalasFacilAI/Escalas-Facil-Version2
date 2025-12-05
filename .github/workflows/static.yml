@@ -39,6 +39,10 @@ jobs:
         run: |
           npm install
           npm run build
+        env:
+        # Esta linha injeta o Segredo no ambiente de build do Vite
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        
       
       # ETAPAS FINAIS DE DEPLOY
       - name: Setup Pages

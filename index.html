@@ -1,0 +1,92 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EscalaFácil AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              brand: {
+                50: '#f0fdfa',
+                100: '#ccfbf1',
+                500: '#14b8a6',
+                600: '#0d9488',
+                900: '#134e4a',
+              },
+              'company': {
+                blue: '#002060', // Azul escuro estilo Prevent Senior
+                light: '#e6f0ff',
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      /* Custom scrollbar for the grid */
+      .roster-scroll::-webkit-scrollbar {
+        height: 10px;
+        width: 10px;
+      }
+      .roster-scroll::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-left: 1px solid #e2e8f0;
+      }
+      .roster-scroll::-webkit-scrollbar-thumb {
+        background: #94a3b8;
+        border-radius: 6px;
+        border: 2px solid #f1f5f9;
+      }
+      .roster-scroll::-webkit-scrollbar-thumb:hover {
+        background: #64748b;
+      }
+      
+      /* Hide standard scrollbar for specific elements but allow functionality */
+      .no-scrollbar::-webkit-scrollbar {
+          display: none;
+      }
+      .no-scrollbar {
+          -ms-overflow-style: none;  /* IE and Edge */
+          scrollbar-width: none;  /* Firefox */
+      }
+
+      /* Print Styles */
+      @media print {
+        @page {
+            size: landscape;
+            margin: 5mm;
+        }
+        body {
+            background-color: white;
+            overflow: visible !important;
+        }
+        .roster-scroll {
+            overflow: visible !important;
+        }
+        /* Ensure background colors print */
+        * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.31.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.1/",
+    "react": "https://aistudiocdn.com/react@^19.2.1"
+  }
+}
+</script>
+</head>
+  <body class="bg-slate-100 text-slate-900 font-sans antialiased overflow-hidden">
+    <div id="root"></div>
+  </body>
+</html>

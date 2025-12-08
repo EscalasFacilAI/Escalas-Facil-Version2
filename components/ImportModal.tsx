@@ -67,7 +67,7 @@ export const ImportModal: React.FC<Props> = ({ isOpen, onClose, onImport }) => {
                     workTime: cols[15] || '', 
                     // Column 16 is SKIPPED (user request)
                     terminationDate: cols[17] || '',
-                    lastDayOff: '' // Manual / Calculated
+                    lastDayOff: '', // Manual / Calculated
                     
                     contractType: 'CLT'
                 };

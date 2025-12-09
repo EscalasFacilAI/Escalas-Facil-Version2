@@ -74,6 +74,38 @@ export const RulesModal: React.FC<Props> = ({ isOpen, onClose, rules, setRules }
                     <span className="text-sm">semanas</span>
                 </div>
             </div>
+
+            {/* NEW: Extra Days Off Rule */}
+            <div className="border-t pt-4">
+                <div className="flex items-center justify-between mb-2">
+                    <div>
+                         <label className="block text-sm font-bold text-slate-700">Gerar folgas a mais?</label>
+                         <p className="text-xs text-slate-500">Permite gerar folgas extras além da quantidade mensal.</p>
+                    </div>
+                    <input 
+                        type="checkbox" 
+                        checked={rules.allowExtraDaysOff}
+                        onChange={(e) => setRules({...rules, allowExtraDaysOff: e.target.checked})}
+                        className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+                    />
+                </div>
+                {rules.allowExtraDaysOff && (
+                    <div className="flex items-center gap-2 mt-2 pl-4 border-l-2 border-blue-200">
+                        <span className="text-sm text-slate-700">Quantidade Máxima:</span>
+                        <div className="flex gap-2">
+                            {[1, 2, 3].map(num => (
+                                <button
+                                    key={num}
+                                    onClick={() => setRules({...rules, extraDaysOffCount: num})}
+                                    className={`w-8 h-8 rounded-full text-xs font-bold ${rules.extraDaysOffCount === num ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                                >
+                                    +{num}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
 
         <div className="p-4 border-t bg-slate-50 flex justify-end">

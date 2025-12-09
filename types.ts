@@ -75,6 +75,8 @@ export interface AIRulesConfig {
   preferSundayOff: boolean;
   sundayOffFrequency: number; 
   preferConsecutiveDaysOff: boolean; // Dobradinhas
+  allowExtraDaysOff: boolean; // New: Allow generating extra days off
+  extraDaysOffCount: number; // New: How many extra days
 }
 
 // Role Name -> Default Count OR Specific Day Config

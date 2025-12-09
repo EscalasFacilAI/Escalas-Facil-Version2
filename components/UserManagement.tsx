@@ -11,6 +11,7 @@ interface Props {
 
 export const UserManagement: React.FC<Props> = ({ onClose, availableUnits, employees }) => {
   const [users, setUsers] = useState<User[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ 
       username: '', 
       password: '', 
@@ -42,10 +43,11 @@ export const UserManagement: React.FC<Props> = ({ onClose, availableUnits, emplo
       localStorage.setItem('APP_USERS', JSON.stringify(newUsers));
   };
 
-  const handleAdd = () => {
+  const handleSave = () => {
       if (!formData.username || !formData.password) return;
+      
       const newUser: User = {
-          id: Date.now().toString(),
+          id: editingId || Date.now().toString(),
           username: formData.username,
           password: formData.password,
           name: formData.name,
@@ -53,16 +55,41 @@ export const UserManagement: React.FC<Props> = ({ onClose, availableUnits, emplo
           allowedUnits: formData.role === 'admin' ? [] : formData.allowedUnits,
           allowedSectors: formData.role === 'admin' ? [] : formData.allowedSectors
       };
-      saveUsers([...users, newUser]);
-      setFormData({ username: '', password: '', name: '', role: 'viewer', allowedUnits: [], allowedSectors: [] });
+
+      if (editingId) {
+          saveUsers(users.map(u => u.id === editingId ? newUser : u));
+      } else {
+          saveUsers([...users, newUser]);
+      }
+      resetForm();
   };
+
+  const handleEdit = (user: User) => {
+      setEditingId(user.id);
+      setFormData({
+          username: user.username,
+          password: user.password || '',
+          name: user.name,
+          role: user.role,
+          allowedUnits: user.allowedUnits || [],
+          allowedSectors: user.allowedSectors || []
+      });
+  }
+
+  const resetForm = () => {
+      setEditingId(null);
+      setFormData({ username: '', password: '', name: '', role: 'viewer', allowedUnits: [], allowedSectors: [] });
+  }
 
   const handleRemove = (id: string) => {
       if(id === 'admin') {
           alert('Não é possível remover o super admin.');
           return;
       }
-      saveUsers(users.filter(u => u.id !== id));
+      if(confirm('Tem certeza que deseja excluir este usuário?')) {
+          saveUsers(users.filter(u => u.id !== id));
+          if (editingId === id) resetForm();
+      }
   };
 
   const toggleUnit = (unit: string) => {
@@ -106,7 +133,10 @@ export const UserManagement: React.FC<Props> = ({ onClose, availableUnits, emplo
           <div className="flex-1 flex gap-4 p-4 overflow-hidden">
              {/* Form */}
              <div className="w-5/12 flex flex-col gap-3 bg-blue-50 p-4 rounded border border-blue-100 overflow-y-auto">
-                <h4 className="font-bold text-sm text-blue-900 uppercase mb-2">Novo Usuário</h4>
+                <div className="flex justify-between items-center">
+                    <h4 className="font-bold text-sm text-blue-900 uppercase mb-2">{editingId ? 'Editar Usuário' : 'Novo Usuário'}</h4>
+                    {editingId && <button onClick={resetForm} className="text-xs text-blue-500 underline">Cancelar Edição</button>}
+                </div>
                 <div>
                     <label className="text-xs font-bold uppercase text-slate-500">Nome Completo</label>
                     <input className="w-full border rounded p-1" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} onKeyDown={e => e.stopPropagation()} />
@@ -173,7 +203,9 @@ export const UserManagement: React.FC<Props> = ({ onClose, availableUnits, emplo
                     </div>
                 )}
 
-                <button onClick={handleAdd} className="w-full bg-green-600 text-white font-bold py-2 rounded hover:bg-green-700 mt-2 uppercase text-xs">Adicionar Usuário</button>
+                <button onClick={handleSave} className="w-full bg-green-600 text-white font-bold py-2 rounded hover:bg-green-700 mt-2 uppercase text-xs">
+                    {editingId ? 'Atualizar Usuário' : 'Adicionar Usuário'}
+                </button>
              </div>
 
              {/* List */}
@@ -212,7 +244,10 @@ export const UserManagement: React.FC<Props> = ({ onClose, availableUnits, emplo
                                      )}
                                  </td>
                                  <td className="p-2 text-right">
-                                     <button onClick={() => handleRemove(u.id)} className="text-red-500 hover:underline text-xs">Excluir</button>
+                                     <div className="flex gap-2 justify-end">
+                                         <button onClick={() => handleEdit(u)} className="text-blue-500 hover:underline text-xs">✏️</button>
+                                         <button onClick={() => handleRemove(u.id)} className="text-red-500 hover:underline text-xs">🗑️</button>
+                                     </div>
                                  </td>
                              </tr>
                          ))}

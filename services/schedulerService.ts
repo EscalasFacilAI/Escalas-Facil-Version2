@@ -127,10 +127,23 @@ export const generateAISchedule = async (
           2. Frequência de Folga aos Domingos: Pelo menos 1 domingo a cada ${rules.sundayOffFrequency} semanas.
           3. DOBRADINHAS (Folgas Consecutivas): ${rules.preferConsecutiveDaysOff ? 'MUITO IMPORTANTE: Priorize agrupar folgas (ex: Sábado+Domingo, Domingo+Segunda) sempre que a escala permitir.' : 'NÃO é prioridade.'}
           4. Preferência por Domingo: ${rules.preferSundayOff ? 'SIM, priorize domingos.' : 'NÃO priorize domingos.'}.
+          5. FOLGAS EXTRAS (Banco de Horas): ${rules.allowExtraDaysOff ? `SIM. Você PODE gerar até ${rules.extraDaysOffCount} dias de folga a mais do que o padrão da escala exige para abater banco de horas.` : 'NÃO gere folgas além da regra da escala.'}
 
           CONTEXTO INICIAL (MUITO IMPORTANTE):
           O campo 'initialConsecutiveDays' indica quantos dias o funcionário já trabalhou consecutivos vindos do mês anterior.
           Se initialConsecutiveDays for >= 5, você DEVE dar uma folga logo no dia 01 ou 02.
+
+          PADRÕES DE ESCALA E SIGLAS NOVAS:
+          - 12x36: Trabalha 1 dia, folga o seguinte.
+          - 12x60: Trabalha 1 dia, folga os próximos 2,5 dias (essencialmente folga 2 ou 3 dias alternados, ajustando média).
+          - RADIO: Escala específica de radiologia (24 horas semanais, geralmente 2 plantões de 12h ou 4 de 6h). Priorize espaçamento.
+          - 5x2: Trabalha 5, folga 2 (Geralmente Sáb/Dom, mas ajustável).
+          - 6x1: Trabalha 6, folga 1.
+          
+          *** ATENÇÃO ÀS ESCALAS "REV" (REVERSO) ***
+          - 6X1 REV e 5X2 REV: Significa que as folgas NÃO devem ser fixas em Sábado/Domingo. 
+            Para essas escalas, distribua as folgas ALEATORIAMENTE durante a semana (Seg-Sex) ou Fim de Semana, 
+            garantindo apenas que a regra de 1 Domingo a cada ${rules.sundayOffFrequency} semanas seja cumprida.
 
           PADRÕES DOS COLABORADORES (Lote ${Math.floor(i / BATCH_SIZE) + 1}):
           ${JSON.stringify(batch.map(e => ({ 
@@ -138,11 +151,6 @@ export const generateAISchedule = async (
               pattern: e.shiftPattern,
               initialConsecutiveDays: getInitialConsecutiveDays(e.lastDayOff, month, year)
           })))}
-          
-          LÓGICA DOS PADRÕES:
-          - 12x36: Trabalha 1 dia, folga o seguinte.
-          - 5x2: Trabalha 5, folga 2 (Priorize Sáb/Dom).
-          - 6x1: Trabalha 6, folga 1 (Cumpra a regra do Domingo!).
 
           Retorne JSON estrito.
         `;

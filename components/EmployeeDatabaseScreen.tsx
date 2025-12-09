@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { Employee } from '../types';
 import { ImportModal } from './ImportModal';
+import { ConfirmationModal } from './ConfirmationModal';
 
 interface Props {
   employees: Employee[];
@@ -16,6 +17,7 @@ export const EmployeeDatabaseScreen: React.FC<Props> = ({ employees, setEmployee
   const [filterUnit, setFilterUnit] = useState('');
   const [filterSector, setFilterSector] = useState('');
   const [showImport, setShowImport] = useState(false);
+  const [showConfirmDeleteAll, setShowConfirmDeleteAll] = useState(false);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<Employee>>({});
@@ -50,7 +52,7 @@ export const EmployeeDatabaseScreen: React.FC<Props> = ({ employees, setEmployee
       if (editingId === 'NEW') {
           setEmployees([...employees, formData as Employee]);
       } else {
-          setEmployees(employees.map(e => e.id === editingId ? { ...e, ...formData } as Employee : e));
+          setEmployees(employees.map(e => e.id === editingId ? Object.assign({}, e, formData) as Employee : e));
       }
       setEditingId(null);
       setFormData({});
@@ -66,8 +68,48 @@ export const EmployeeDatabaseScreen: React.FC<Props> = ({ employees, setEmployee
       }
   };
 
+  const executeDeleteAll = () => {
+      setEmployees([]);
+      setEditingId(null);
+  }
+
+  const handleExportCSV = () => {
+      let csv = "Nome;ID;Cargo;CPF;Escala;Posição;Categoria;BH;Unidade;Setor;Unid. Org;Nascimento;Admissão;Email;Sexo;Horário;Ignorado;Data Desligamento\n";
+      employees.forEach(e => {
+          const row = [
+              e.name, e.id, e.role, e.cpf, e.shiftPattern, e.positionNumber, e.categoryCode, e.bankHoursBalance,
+              e.unit, e.sector, e.organizationalUnit, e.birthDate, e.admissionDate, e.email, e.gender, e.workTime, '', e.terminationDate
+          ].map(val => `"${val || ''}"`).join(';');
+          csv += row + "\n";
+      });
+
+      const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `Cadastro_Colaboradores_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+  }
+
   const handleImport = (newEmps: Employee[]) => {
-      setEmployees(prev => [...prev, ...newEmps]);
+      setEmployees(prev => {
+          // Upsert logic: Create a map of existing employees by ID
+          const empMap = new Map(prev.map(e => [e.id, e]));
+          
+          newEmps.forEach(importedEmp => {
+              if (empMap.has(importedEmp.id)) {
+                  // If exists, update properties (merge)
+                  const existing = empMap.get(importedEmp.id)!;
+                  empMap.set(importedEmp.id, { ...existing, ...importedEmp });
+              } else {
+                  // If new, add it
+                  empMap.set(importedEmp.id, importedEmp);
+              }
+          });
+          
+          return Array.from(empMap.values());
+      });
   }
 
   return (
@@ -208,12 +250,16 @@ export const EmployeeDatabaseScreen: React.FC<Props> = ({ employees, setEmployee
                  </select>
              </div>
              <div className="flex gap-2">
+                 <button onClick={() => setShowConfirmDeleteAll(true)} className="flex items-center gap-2 px-3 py-2 bg-red-100 text-red-600 border border-red-200 rounded font-bold uppercase text-xs hover:bg-red-200">
+                    🗑️ Excluir Tudo
+                 </button>
+                 <button onClick={handleExportCSV} className="flex items-center gap-2 px-3 py-2 bg-slate-100 text-slate-600 border border-slate-200 rounded font-bold uppercase text-xs hover:bg-slate-200">
+                    📥 Exportar CSV
+                 </button>
                  <button onClick={() => setShowImport(true)} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded font-bold uppercase text-xs hover:bg-green-700">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
                     Importar CSV
                  </button>
                  <button onClick={handleNew} className="flex items-center gap-2 px-4 py-2 bg-company-blue text-white rounded font-bold uppercase text-xs hover:bg-blue-900">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                     Novo Colaborador
                  </button>
              </div>
@@ -276,6 +322,16 @@ export const EmployeeDatabaseScreen: React.FC<Props> = ({ employees, setEmployee
       </div>
       
       <ImportModal isOpen={showImport} onClose={() => setShowImport(false)} onImport={handleImport} />
+      
+      <ConfirmationModal 
+        isOpen={showConfirmDeleteAll}
+        onClose={() => setShowConfirmDeleteAll(false)}
+        onConfirm={executeDeleteAll}
+        title="Excluir Todos os Colaboradores"
+        message="ATENÇÃO: Esta ação irá apagar PERMANENTEMENTE todos os colaboradores cadastrados no sistema. Você terá que cadastrar ou importar tudo novamente. Deseja realmente continuar?"
+        confirmText="Excluir Definitivamente"
+        isDangerous={true}
+      />
     </div>
   );
 };

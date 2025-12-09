@@ -5,8 +5,6 @@ import react from '@vitejs/plugin-react';
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
-        // CORREÇÃO: Adicionando o caminho base do seu repositório
-        base: '/Escalas-Facil-Version2/', 
       server: {
         port: 3000,
         host: '0.0.0.0',

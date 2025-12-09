@@ -63,7 +63,7 @@ export const RosterGrid: React.FC<Props> = ({
 
   // RESIZING STATE
   const [colWidths, setColWidths] = useState<Record<ExtendedColumnKey, number>>({
-      name: 220, id: 80, role: 120, cpf: 100, scale: 60, time: 80, shiftType: 100, position: 80, council: 100, bh: 60, uf: 90
+      name: 220, id: 80, role: 120, cpf: 100, scale: 60, time: 80, shiftType: 100, position: 80, council: 100, bh: 60, uf: 95
   });
   const [resizing, setResizing] = useState<{ key: ExtendedColumnKey, startX: number, startWidth: number } | null>(null);
 
@@ -105,7 +105,14 @@ export const RosterGrid: React.FC<Props> = ({
     });
   }, [employees, sortConfig]);
 
-  const visibleColumns = (Object.keys(colWidths) as ExtendedColumnKey[]).filter(k => !hiddenColumns.includes(k));
+  // FIXED: Explicit column order to ensure consistent rendering and hiding
+  const orderedKeys: ExtendedColumnKey[] = ['name', 'id', 'role', 'cpf', 'scale', 'time', 'shiftType', 'position', 'council', 'bh', 'uf'];
+
+  // FIXED: Calculate visible columns based on ordered keys and hidden columns
+  const visibleColumns = useMemo(() => {
+      return orderedKeys.filter(k => !hiddenColumns.includes(k));
+  }, [hiddenColumns]);
+
   const totalLeftWidth = visibleColumns.reduce((acc, key) => acc + colWidths[key], 0);
 
   const getStickyLeft = (key: ExtendedColumnKey) => {
@@ -201,7 +208,7 @@ export const RosterGrid: React.FC<Props> = ({
 
         // --- ARROW NAVIGATION ---
         if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-            // Check if focus is inside an input (like shiftType)
+            // Check if focus is inside an input (like shiftType or uf)
             if (document.activeElement?.tagName === 'INPUT') return;
             
             e.preventDefault();
@@ -235,7 +242,7 @@ export const RosterGrid: React.FC<Props> = ({
 
         // DELETE
         if (e.key === 'Delete' || e.key === 'Backspace') {
-            // Check if focus is inside an input (like shiftType)
+            // Check if focus is inside an input (like shiftType or uf)
             if (document.activeElement?.tagName === 'INPUT') return;
 
             e.preventDefault();
@@ -498,7 +505,7 @@ export const RosterGrid: React.FC<Props> = ({
           <button 
             onClick={() => setHiddenColumns([])} 
             title="Restaurar Colunas"
-            className="absolute top-1 left-1 z-50 bg-blue-100 text-blue-700 p-1.5 rounded-full shadow hover:bg-blue-200 print:hidden transition-all"
+            className="absolute top-1 left-1 z-[70] bg-blue-100 text-blue-700 p-1.5 rounded-full shadow hover:bg-blue-200 print:hidden transition-all w-fit h-fit"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                 <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
@@ -599,40 +606,43 @@ export const RosterGrid: React.FC<Props> = ({
                     {visibleColumns.map(key => {
                         let val = key === 'scale' ? employee.shiftPattern : key === 'time' ? employee.workTime : key === 'position' ? employee.positionNumber : key === 'council' ? employee.categoryCode : key === 'bh' ? employee.bankHoursBalance : key === 'uf' ? employee.lastDayOff : (employee as any)[key];
                         
-                        // Format Date for UF (DD/MM)
-                        if (key === 'uf') {
-                            if (val) {
-                                const parts = val.split('-');
-                                if (parts.length === 3) val = `${parts[2]}/${parts[1]}`;
-                            } else {
-                                val = '-';
-                            }
+                        let displayVal = val;
+                        // FORMAT DATE FOR UF (dd/mm/yy)
+                        if (key === 'uf' && val) {
+                             const [year, month, day] = val.split('-');
+                             if (year && month && day) {
+                                 displayVal = `${day}/${month}/${year.slice(-2)}`;
+                             }
                         }
 
                         const colorClass = key === 'bh' ? (val && val.startsWith('-') ? 'text-red-600' : 'text-green-600 font-bold') : 'text-slate-500';
                         const isFrozen = frozenColumns.includes(key); const left = getStickyLeft(key);
+                        
                         const isShiftType = key === 'shiftType';
+                        const isUf = key === 'uf';
+                        const canEditCell = !isReadOnly && (isShiftType || isUf);
 
                         return (
                             <div key={key} style={{ width: colWidths[key], position: isFrozen ? 'sticky' : 'relative', left: isFrozen ? left : 'auto', zIndex: isFrozen ? 30 : 'auto' }} className={`flex items-center px-2 border-r border-slate-100 overflow-hidden bg-white group-hover:bg-blue-50 ${isFrozen ? 'shadow-[2px_0_5px_rgba(0,0,0,0.05)]' : ''}`}>
-                                {isShiftType && !isReadOnly ? (
+                                {canEditCell ? (
                                     <input 
-                                        type="text"
-                                        className="w-full bg-transparent border-none text-[9px] uppercase font-medium focus:ring-1 focus:ring-blue-500 rounded px-1 min-w-0"
-                                        defaultValue={val}
-                                        onBlur={(e) => {
-                                            if (onUpdateEmployee && e.target.value !== val) {
-                                                onUpdateEmployee(employee.id, 'shiftType', e.target.value);
-                                            }
+                                        type={isUf ? "date" : "text"}
+                                        className={`w-full bg-transparent border-none text-[10px] uppercase font-medium focus:ring-1 focus:ring-blue-500 rounded px-1 min-w-0 h-full ${isUf ? 'cursor-text' : ''}`}
+                                        value={val || ''}
+                                        onChange={(e) => {
+                                             if (onUpdateEmployee) {
+                                                 onUpdateEmployee(employee.id, key === 'shiftType' ? 'shiftType' : 'lastDayOff', e.target.value);
+                                             }
                                         }}
                                         onKeyDown={(e) => {
-                                            // ALLOW DELETE/BACKSPACE TO PROPAGATE LOCALLY BUT STOP IT FROM REACHING GRID
                                             e.stopPropagation();
                                             if (e.key === 'Enter') e.currentTarget.blur();
                                         }}
                                     />
                                 ) : (
-                                    <span className={`text-[9px] truncate uppercase font-medium ${colorClass}`} title={val}>{val}</span>
+                                    <span className={`text-[9px] truncate uppercase font-medium ${colorClass}`} title={val}>
+                                        {displayVal}
+                                    </span>
                                 )}
                             </div>
                         )

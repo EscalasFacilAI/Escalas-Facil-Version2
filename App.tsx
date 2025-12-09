@@ -16,6 +16,8 @@ import { Tooltip } from './components/Tooltip';
 import { EmployeeDatabaseScreen } from './components/EmployeeDatabaseScreen';
 import { MultiSelect } from './components/MultiSelect';
 import { ReportsScreen } from './components/ReportsScreen';
+import { GenerationScopeModal } from './components/GenerationScopeModal';
+import { ConfirmationModal } from './components/ConfirmationModal';
 
 // Icons
 const SaveIcon = ({ saved }: { saved: boolean }) => (
@@ -28,6 +30,7 @@ const TagIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBo
 // Megaphone Icon (Regras da IA)
 const MegaphoneIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M10.34 15.84c-.688-.06-1.386-.09-2.09-.09H7.5a4.5 4.5 0 110-9h.75c.704 0 1.402-.03 2.09-.09m0 9.18c.253.962.584 1.892.985 2.783.247.55.06 1.21-.463 1.511l-.657.38c-.551.318-1.26.117-1.527-.461a20.845 20.845 0 01-1.44-4.282m3.102.069a18.03 18.03 0 01-.59-4.59c0-1.586.205-3.124.59-4.59m0 9.18a23.848 23.848 0 018.835 2.535M10.34 6.66a23.847 23.847 0 018.835-2.535m0 0A23.74 23.74 0 0018.795 3m.38 1.125a23.91 23.91 0 011.014 5.395m-1.014 8.855c-.118.38-.245.754-.38 1.125m.38-1.125a23.91 23.91 0 001.014-5.395m0-3.467a23.879 23.879 0 00-1.014-5.395m0 3.467c-.291 1.126-.541 2.274-.75 3.446M12.5 12h.008v.008H12.5V12z" /></svg>;
 const ChartBarIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg>;
+const TrashIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>;
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -48,7 +51,10 @@ const App: React.FC = () => {
   const [selectedShiftTypes, setSelectedShiftTypes] = useState<string[]>([]);
   const [globalSearchTerm, setGlobalSearchTerm] = useState('');
 
-  const [aiRules, setAiRules] = useState<AIRulesConfig>({ maxConsecutiveDays: 6, minRestHours: 11, preferSundayOff: true, sundayOffFrequency: 2, preferConsecutiveDaysOff: true });
+  const [aiRules, setAiRules] = useState<AIRulesConfig>({ 
+      maxConsecutiveDays: 6, minRestHours: 11, preferSundayOff: true, sundayOffFrequency: 2, preferConsecutiveDaysOff: true,
+      allowExtraDaysOff: false, extraDaysOffCount: 1 
+  });
   const [staffingConfig, setStaffingConfig] = useState<StaffingConfig>({});
   
   // SCHEDULE STATE
@@ -94,7 +100,11 @@ const App: React.FC = () => {
   const [showRules, setShowRules] = useState(false);
   const [showStaffing, setShowStaffing] = useState(false);
   const [showUserMgmt, setShowUserMgmt] = useState(false);
+  const [showGenerationScope, setShowGenerationScope] = useState(false);
   const [filterManager, setFilterManager] = useState<{ isOpen: boolean, type: 'Unit' | 'Sector' | 'Shift' | null }>({ isOpen: false, type: null });
+
+  // Confirmation Modal State
+  const [showConfirmClear, setShowConfirmClear] = useState(false);
 
   // Refs for click outside
   const appContainerRef = useRef<HTMLDivElement>(null);
@@ -219,17 +229,32 @@ const App: React.FC = () => {
     setHistoryPast([]); setHistoryFuture([]);
   };
 
-  const handleAutoGenerate = async () => {
-    if (!process.env.API_KEY) { alert("API Key não encontrada."); return; }
-    if (filteredEmployees.length === 0) { alert("Nenhum colaborador visível."); return; }
-    
-    setIsGenerating(true);
-    setGenerationProgress({ current: 0, total: filteredEmployees.length });
+  const executeClearSchedule = () => {
+      setSchedule(prev => ({
+          ...prev,
+          assignments: {},
+          attachments: {},
+          comments: {}
+      }));
+  }
 
-    const result = await generateAISchedule(filteredEmployees, shifts, schedule.month, schedule.year, aiRules, (current, total) => setGenerationProgress({ current, total }));
+  const handleAutoGenerateClick = () => {
+      if (!process.env.API_KEY) { alert("API Key não encontrada."); return; }
+      if (filteredEmployees.length === 0) { alert("Nenhum colaborador visível."); return; }
+      setShowGenerationScope(true);
+  }
 
-    if (result) { setSchedule(prev => ({ ...prev, assignments: { ...prev.assignments, ...result } })); } else { alert("Erro ao gerar escala."); }
-    setIsGenerating(false);
+  const handleConfirmGeneration = async (selectedIds: string[]) => {
+      const targetEmployees = filteredEmployees.filter(e => selectedIds.includes(e.id));
+      if (targetEmployees.length === 0) return;
+
+      setIsGenerating(true);
+      setGenerationProgress({ current: 0, total: targetEmployees.length });
+
+      const result = await generateAISchedule(targetEmployees, shifts, schedule.month, schedule.year, aiRules, (current, total) => setGenerationProgress({ current, total }));
+
+      if (result) { setSchedule(prev => ({ ...prev, assignments: { ...prev.assignments, ...result } })); } else { alert("Erro ao gerar escala."); }
+      setIsGenerating(false);
   };
 
   // Close shift modal if clicking outside
@@ -294,8 +319,9 @@ const App: React.FC = () => {
                     {isGenerating && (<div className="flex flex-col justify-center min-w-[150px] mr-4 hidden lg:flex"><div className="flex justify-between text-[10px] text-blue-200 mb-1"><span>Gerando...</span><span>{generationProgress.current} / {generationProgress.total}</span></div><div className="w-full bg-blue-900 rounded-full h-2 overflow-hidden"><div className="bg-emerald-400 h-full transition-all duration-300 ease-out" style={{ width: `${(generationProgress.current / generationProgress.total) * 100}%` }}></div></div></div>)}
                     <Tooltip content="Salvar Alterações"><button onClick={handleSaveData} className="p-2 text-white hover:bg-white/10 rounded-full transition-all"><SaveIcon saved={isSaved} /></button></Tooltip>
                     <Tooltip content="Imprimir Escala"><button onClick={handlePrint} className="p-2 text-white hover:bg-white/10 rounded-full transition-all"><PrintIcon /></button></Tooltip>
+                    {isAdmin && (<Tooltip content="Limpar Escala"><button onClick={() => setShowConfirmClear(true)} className="p-2 text-red-300 hover:bg-red-500/20 hover:text-red-200 rounded-full transition-all"><TrashIcon /></button></Tooltip>)}
                     <div className="w-px h-8 bg-blue-700 mx-2 hidden sm:block"></div>
-                    {canEdit && (<>{isAdmin && (<Tooltip content="Legendas & Turnos"><button onClick={() => setShowShifts(true)} className="p-2 text-white hover:bg-white/10 rounded-full"><TagIcon /></button></Tooltip>)}<Tooltip content="Regras da IA"><button onClick={() => setShowRules(true)} className="p-2 text-white hover:bg-white/10 rounded-full"><MegaphoneIcon /></button></Tooltip><Tooltip content="Dimensionamento"><button onClick={() => setShowStaffing(true)} className="p-2 text-white hover:bg-white/10 rounded-full"><ChartBarIcon /></button></Tooltip><button onClick={handleAutoGenerate} disabled={isGenerating} className="ml-2 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded uppercase shadow border border-emerald-400 disabled:opacity-50 min-w-max">{isGenerating ? 'Parar' : 'Gerar (IA)'}</button></>)}
+                    {canEdit && (<>{isAdmin && (<Tooltip content="Legendas & Turnos"><button onClick={() => setShowShifts(true)} className="p-2 text-white hover:bg-white/10 rounded-full"><TagIcon /></button></Tooltip>)}<Tooltip content="Regras da IA"><button onClick={() => setShowRules(true)} className="p-2 text-white hover:bg-white/10 rounded-full"><MegaphoneIcon /></button></Tooltip><Tooltip content="Dimensionamento"><button onClick={() => setShowStaffing(true)} className="p-2 text-white hover:bg-white/10 rounded-full"><ChartBarIcon /></button></Tooltip><button onClick={handleAutoGenerateClick} disabled={isGenerating} className="ml-2 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded uppercase shadow border border-emerald-400 disabled:opacity-50 min-w-max">{isGenerating ? 'Parar' : 'Gerar (IA)'}</button></>)}
                 </div>
             </div>
         )}
@@ -324,7 +350,19 @@ const App: React.FC = () => {
       <RulesModal isOpen={showRules} onClose={() => setShowRules(false)} rules={aiRules} setRules={setAiRules} />
       <StaffingModal isOpen={showStaffing} onClose={() => setShowStaffing(false)} employees={employees} config={staffingConfig} setConfig={setStaffingConfig} />
       {showUserMgmt && <UserManagement onClose={() => setShowUserMgmt(false)} availableUnits={units} employees={employees} />}
+      <GenerationScopeModal isOpen={showGenerationScope} onClose={() => setShowGenerationScope(false)} employees={filteredEmployees} onConfirm={handleConfirmGeneration} />
       <FilterManagerModal isOpen={filterManager.isOpen} onClose={() => setFilterManager({ isOpen: false, type: null })} title={filterManager.type || ''} items={filterManager.type === 'Unit' ? units : filterManager.type === 'Sector' ? sectors : shiftTypesList} setItems={filterManager.type === 'Unit' ? setUnits : filterManager.type === 'Sector' ? setSectors : setShiftTypesList} />
+      
+      {/* GLOBAL CONFIRMATION MODALS */}
+      <ConfirmationModal 
+        isOpen={showConfirmClear}
+        onClose={() => setShowConfirmClear(false)}
+        onConfirm={executeClearSchedule}
+        title="Limpar Escala Inteira"
+        message="ATENÇÃO: Isso apagará TODAS as legendas, folgas, anexos e observações da escala do mês atual visível. Esta ação não pode ser desfeita. Deseja continuar?"
+        confirmText="Limpar Tudo"
+        isDangerous={true}
+      />
     </div>
   );
 };

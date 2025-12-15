@@ -156,17 +156,19 @@ export const generateAISchedule = async (
           IMPORTANTE: Retorne APENAS os dias que NÃO são trabalho (F ou DSR). Os dias de trabalho devem ficar vazios (null).
 
           REGRAS GERAIS:
-          1. Considere o 'initialConsecutiveDays' (dias trabalhados seguidos vindos do mês anterior).
-          2. Não deixe todos os colaboradores do mesmo setor folgarem no mesmo dia.
+          1. Considere 'lastDayOff' para determinar se o dia 1 do mês é trabalho ou folga (especialmente para 12x36).
+          2. Não deixe todos os colaboradores do mesmo setor folgarem no mesmo dia (para escalas diárias).
           
           REGRAS POR TIPO DE ESCALA:
           
           [ESCALA 12x36]
-          - Padrão Fixo: Trabalha 1 dia, Descansa 1 dia.
-          - O dia de descanso deve ser marcado como "${dsrId}".
-          - REGRA QUINZENAL: O colaborador precisa de 1 folga extra ("${folgaId}") a cada quinzena (15 dias).
-          - Essa folga extra ("${folgaId}") deve cair em um dia que SERIA de trabalho pelo padrão fixo.
-          - O resultado visual deve ser algo como: ... DSR | ${folgaId} | DSR ... (onde o F substitui um dia de trabalho).
+          - ESSENCIAL: Você DEVE gerar os dias de descanso ("${dsrId}") alternados com os dias de trabalho.
+          - O padrão é: Dia sim (Trabalho/Null), Dia não (Descanso/${dsrId}).
+          - Verifique 'lastDayOff' para saber a sequência correta. Se lastDayOff foi o último dia do mês anterior, dia 1 é Trabalho. Se foi o penúltimo, dia 1 é DSR.
+          - ALÉM do padrão 1x1, aplique a "Folga Extra Quinzenal": O colaborador precisa de 1 folga extra ("${folgaId}") a cada quinzena.
+          - A folga extra ("${folgaId}") SUBSTITUI um dia que seria de trabalho na sequência.
+          - Resultado visual esperado no JSON para a sequência: ... DSR | ${folgaId} | DSR ... (Onde ${folgaId} tomou o lugar de um dia de trabalho).
+          - NUNCA retorne null (trabalho) para os dias que devem ser DSR. Eles precisam ser preenchidos explicitamente com "${dsrId}".
           
           [ESCALA 6x1]
           - Trabalha 6, Folga 1.
@@ -186,6 +188,7 @@ export const generateAISchedule = async (
               id: e.id, 
               pattern: e.shiftPattern,
               gender: e.gender,
+              lastDayOff: e.lastDayOff,
               initialConsecutiveDays: getInitialConsecutiveDays(e.lastDayOff, month, year)
           })))}
 

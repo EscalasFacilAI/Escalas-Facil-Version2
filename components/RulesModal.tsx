@@ -39,7 +39,7 @@ export const RulesModal: React.FC<Props> = ({ isOpen, onClose, rules, setRules }
             <div className="flex items-center justify-between border-t pt-4">
                 <div className="flex flex-col">
                      <label className="block text-sm font-bold text-slate-700">Preferir folga aos Domingos?</label>
-                     <span className="text-[10px] text-slate-500 italic mt-1">* Aplicável prioritariamente para colaboradoras (feminino) e escalas 6x1 ou 5x2 (Art. 386 CLT).</span>
+                     <p className="text-[10px] text-slate-400">Tenta alocar folgas aos domingos sempre que possível para todos.</p>
                 </div>
                 <input 
                     type="checkbox" 
@@ -73,6 +73,14 @@ export const RulesModal: React.FC<Props> = ({ isOpen, onClose, rules, setRules }
                         className="w-16 border rounded p-1 text-center font-bold"
                     />
                     <span className="text-sm">semanas</span>
+                </div>
+                <div className="mt-2 bg-blue-50 p-2 rounded border border-blue-100">
+                    <p className="text-[10px] text-blue-800 font-bold mb-1">Nota sobre Legislação (Art. 386 CLT):</p>
+                    <p className="text-[10px] text-slate-600 leading-tight text-justify">
+                        A IA verificará o campo <strong>"Sexo"</strong> no cadastro de cada colaborador. 
+                        Para mulheres, será priorizada a escala quinzenal (1 domingo a cada 2 semanas). 
+                        Para homens, será respeitada a configuração padrão de 1 domingo a cada 3 semanas.
+                    </p>
                 </div>
             </div>
 

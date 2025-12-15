@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "build": "vite build --base=/Escalas-Facil-Version2/",
     "preview": "vite preview"
   },
   "dependencies": {

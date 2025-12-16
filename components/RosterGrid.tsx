@@ -1,5 +1,5 @@
 
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { Employee, Shift, MonthlySchedule, AIRulesConfig, StaffingConfig, GridSelection, ExtendedColumnKey, AttachmentData } from '../types';
 import { getDaysInMonth, validateSchedule, calculateRequiredDaysOff } from '../services/schedulerService';
 import { Tooltip } from './Tooltip';
@@ -71,8 +71,12 @@ export const RosterGrid: React.FC<Props> = ({
   const menuRef = useRef<HTMLDivElement>(null);
   
   const gridContainerRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null); // Ref for the virtual scroll container
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingAssignmentRef = useRef<{employeeId: string, day: number, shiftId: string} | null>(null);
+  
+  // Clipboard Ref to store Shift ID internally
+  const clipboardRef = useRef<string | null>(null);
 
   // Sorting
   const [sortConfig, setSortConfig] = useState<{ key: ExtendedColumnKey | null, direction: 'asc' | 'desc' }>({ key: null, direction: 'asc' });
@@ -123,7 +127,10 @@ export const RosterGrid: React.FC<Props> = ({
   }, []);
 
   const [resizing, setResizing] = useState<{ key: ExtendedColumnKey, startX: number, startWidth: number } | null>(null);
+  
+  // SELECTION STATE
   const [selection, setSelection] = useState<GridSelection | null>(null);
+  const [selectionAnchor, setSelectionAnchor] = useState<{empIndex: number, day: number} | null>(null); // To handle Shift+Select
   const [isSelecting, setIsSelecting] = useState(false);
   const [focusedCell, setFocusedCell] = useState<{empIndex: number, day: number} | null>(null);
 
@@ -185,6 +192,150 @@ export const RosterGrid: React.FC<Props> = ({
       return offset;
   }
 
+  // --- KEYBOARD HANDLING ---
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+        // Ignore if user is typing in an input/textarea
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) {
+            return;
+        }
+
+        // Delete / Backspace: Clear Selected Cells
+        if (e.key === 'Delete' || e.key === 'Backspace') {
+            if (!selection || isReadOnly) return;
+            e.preventDefault();
+
+            setSchedule(prev => {
+                const newAssignments = { ...prev.assignments };
+                // const newAttachments = { ...prev.attachments };
+                // const newComments = { ...prev.comments };
+
+                for (let r = Math.min(selection.startRow, selection.endRow); r <= Math.max(selection.startRow, selection.endRow); r++) {
+                    const emp = sortedEmployees[r];
+                    if (!emp) continue;
+                    
+                    const empAssignments = { ...(newAssignments[emp.id] || {}) };
+                    let changed = false;
+
+                    for (let c = Math.min(selection.startCol, selection.endCol); c <= Math.max(selection.startCol, selection.endCol); c++) {
+                        const dateKey = `${prev.year}-${String(prev.month + 1).padStart(2, '0')}-${String(c).padStart(2, '0')}`;
+                        if (empAssignments[dateKey]) {
+                            delete empAssignments[dateKey];
+                            changed = true;
+                        }
+                    }
+
+                    if (changed) {
+                        newAssignments[emp.id] = empAssignments;
+                    }
+                }
+                return { ...prev, assignments: newAssignments };
+            });
+            return;
+        }
+
+        // Copy (Ctrl+C / Meta+C)
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
+            if (!focusedCell) return;
+            const emp = sortedEmployees[focusedCell.empIndex];
+            if (!emp) return;
+            
+            const dateKey = `${currentSchedule.year}-${String(currentSchedule.month + 1).padStart(2, '0')}-${String(focusedCell.day).padStart(2, '0')}`;
+            const shiftId = currentSchedule.assignments[emp.id]?.[dateKey];
+            
+            if (shiftId) {
+                clipboardRef.current = shiftId;
+                const shift = shifts.find(s => s.id === shiftId);
+                if (shift) navigator.clipboard.writeText(shift.code);
+            } else {
+                clipboardRef.current = null;
+            }
+            return;
+        }
+
+        // Paste (Ctrl+V / Meta+V)
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+            if (!selection || isReadOnly || !clipboardRef.current) return;
+            const shiftIdToPaste = clipboardRef.current;
+            e.preventDefault();
+
+            setSchedule(prev => {
+                const newAssignments = { ...prev.assignments };
+                
+                for (let r = Math.min(selection.startRow, selection.endRow); r <= Math.max(selection.startRow, selection.endRow); r++) {
+                    const emp = sortedEmployees[r];
+                    if (!emp) continue;
+                    
+                    const empAssignments = { ...(newAssignments[emp.id] || {}) };
+                    
+                    for (let c = Math.min(selection.startCol, selection.endCol); c <= Math.max(selection.startCol, selection.endCol); c++) {
+                        const dateKey = `${prev.year}-${String(prev.month + 1).padStart(2, '0')}-${String(c).padStart(2, '0')}`;
+                        empAssignments[dateKey] = shiftIdToPaste;
+                    }
+                    newAssignments[emp.id] = empAssignments;
+                }
+                return { ...prev, assignments: newAssignments };
+            });
+            return;
+        }
+
+        // Navigation (Arrows) + Selection (Shift)
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+            if (!focusedCell) return;
+            e.preventDefault();
+
+            let newRow = focusedCell.empIndex;
+            let newDay = focusedCell.day;
+
+            if (e.key === 'ArrowUp') newRow = Math.max(0, newRow - 1);
+            if (e.key === 'ArrowDown') newRow = Math.min(sortedEmployees.length - 1, newRow + 1);
+            if (e.key === 'ArrowLeft') newDay = Math.max(1, newDay - 1);
+            if (e.key === 'ArrowRight') newDay = Math.min(daysInMonth, newDay + 1);
+
+            if (newRow !== focusedCell.empIndex || newDay !== focusedCell.day) {
+                setFocusedCell({ empIndex: newRow, day: newDay });
+                
+                if (e.shiftKey) {
+                    // Shift held: Expand selection from Anchor
+                    const anchor = selectionAnchor || { empIndex: focusedCell.empIndex, day: focusedCell.day };
+                    if (!selectionAnchor) setSelectionAnchor(anchor);
+
+                    setSelection({
+                        startRow: Math.min(anchor.empIndex, newRow),
+                        endRow: Math.max(anchor.empIndex, newRow),
+                        startCol: Math.min(anchor.day, newDay),
+                        endCol: Math.max(anchor.day, newDay)
+                    });
+                } else {
+                    // No Shift: Reset selection and anchor
+                    setSelection({ startRow: newRow, startCol: newDay, endRow: newRow, endCol: newDay });
+                    setSelectionAnchor({ empIndex: newRow, day: newDay });
+                }
+                
+                // Scroll Logic
+                if (scrollContainerRef.current) {
+                    const currentScrollTop = scrollContainerRef.current.scrollTop;
+                    const rowTop = newRow * ROW_HEIGHT;
+                    const rowBottom = rowTop + ROW_HEIGHT;
+                    const viewHeight = containerHeight;
+
+                    // Vertical Scroll
+                    if (rowTop < currentScrollTop) {
+                        scrollContainerRef.current.scrollTop = rowTop;
+                    } else if (rowBottom > currentScrollTop + viewHeight) {
+                        scrollContainerRef.current.scrollTop = rowBottom - viewHeight;
+                    }
+                }
+            }
+        }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+
+  }, [focusedCell, selection, selectionAnchor, sortedEmployees, currentSchedule, isReadOnly, daysInMonth, containerHeight, shifts]);
+
+
   // --- EVENTS ---
   useEffect(() => {
     const handleBackgroundClick = (e: MouseEvent) => {
@@ -193,14 +344,22 @@ export const RosterGrid: React.FC<Props> = ({
           setContextMenu(prev => ({...prev, visible: false}));
       }
 
+      // Logic to clear selection if clicked outside the grid AND outside the menu
+      const isGridClick = gridContainerRef.current && gridContainerRef.current.contains(e.target as Node);
+      const isMenuClick = menuRef.current && menuRef.current.contains(e.target as Node);
+
+      if (!isGridClick && !isMenuClick) {
+          // Check if it's not a modal or button outside (simple check: if body or main container)
+          setSelection(null);
+          setFocusedCell(null);
+          setSelectionAnchor(null);
+      }
+
       if (gridContainerRef.current && gridContainerRef.current.contains(e.target as Node)) {
           const target = e.target as HTMLElement;
           // Close editing left cell if clicked outside
           if (!target.classList.contains('editable-cell-input')) {
               setEditingLeftCell(null);
-          }
-          if (target === gridContainerRef.current || target.classList.contains('roster-bg')) {
-             setSelection(null); setFocusedCell(null); 
           }
       } else {
           setEditingLeftCell(null);
@@ -224,8 +383,27 @@ export const RosterGrid: React.FC<Props> = ({
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => setScrollTop(e.currentTarget.scrollTop);
 
   // Interaction handlers
-  const handleMouseDown = (rowIndex: number, day: number) => { if (isReadOnly) return; setIsSelecting(true); setSelection({ startRow: rowIndex, startCol: day, endRow: rowIndex, endCol: day }); setFocusedCell({ empIndex: rowIndex, day }); setContextMenu(prev => ({...prev, visible: false})); };
-  const handleMouseEnter = (rowIndex: number, day: number) => { if (isSelecting && selection) setSelection({ ...selection, endRow: rowIndex, endCol: day }); };
+  const handleMouseDown = (rowIndex: number, day: number) => { 
+      if (isReadOnly) return; 
+      setIsSelecting(true); 
+      setSelection({ startRow: rowIndex, startCol: day, endRow: rowIndex, endCol: day }); 
+      setFocusedCell({ empIndex: rowIndex, day }); 
+      setSelectionAnchor({ empIndex: rowIndex, day }); // Set anchor for drag/shift
+      setContextMenu(prev => ({...prev, visible: false})); 
+  };
+  
+  const handleMouseEnter = (rowIndex: number, day: number) => { 
+      if (isSelecting && selectionAnchor) {
+          // Drag selection logic using Anchor
+          setSelection({ 
+              startRow: Math.min(selectionAnchor.empIndex, rowIndex),
+              endRow: Math.max(selectionAnchor.empIndex, rowIndex),
+              startCol: Math.min(selectionAnchor.day, day),
+              endCol: Math.max(selectionAnchor.day, day)
+          });
+      }
+  };
+  
   const handleMouseUp = () => setIsSelecting(false);
 
   // --- ATTACHMENT HANDLING ---
@@ -462,12 +640,12 @@ export const RosterGrid: React.FC<Props> = ({
 
   // --- RENDER ---
   return (
-    <div ref={gridContainerRef} className="roster-bg bg-white rounded shadow-sm border border-slate-200 flex flex-col h-full w-full overflow-hidden select-none relative print:border-none print:shadow-none" onMouseUp={handleMouseUp}>
+    <div ref={gridContainerRef} className="roster-bg bg-white rounded shadow-sm border border-slate-200 flex flex-col h-full w-full overflow-hidden select-none relative print:border-none print:shadow-none min-w-0" onMouseUp={handleMouseUp} tabIndex={0}>
       <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} />
       {hiddenColumns.length > 0 && <button onClick={() => setHiddenColumns([])} className="absolute top-1 left-1 z-[80] bg-blue-100 text-blue-700 p-1.5 rounded-full shadow hover:bg-blue-200 print:hidden transition-all w-fit h-fit" title="Mostrar todas colunas">👁️</button>}
       
       {/* BODY - VIRTUALIZED */}
-      <div className="flex-1 overflow-auto w-full relative bg-white" onScroll={handleScroll}>
+      <div ref={scrollContainerRef} className="flex-1 overflow-auto w-full relative bg-white outline-none touch-auto" onScroll={handleScroll}>
         
         {/* HEADER */}
         <div className="flex bg-company-blue text-white z-[60] shadow-md w-fit min-w-full sticky top-0">
@@ -545,7 +723,7 @@ export const RosterGrid: React.FC<Props> = ({
                                         />
                                     ) : (
                                         <div className="flex items-center justify-between w-full">
-                                            <span className={`text-[9px] truncate uppercase font-medium ${colorClass}`} title={displayValue}>{displayValue}</span>
+                                            <span className={`text-[9px] md:text-[10px] truncate uppercase font-medium ${colorClass}`} title={displayValue}>{displayValue}</span>
                                             {isUF && !isReadOnly && (
                                                 <div className="relative flex items-center" onClick={(e) => e.stopPropagation()}>
                                                     <div className="opacity-60 hover:opacity-100 transition-opacity p-1">
@@ -577,7 +755,7 @@ export const RosterGrid: React.FC<Props> = ({
                             const comment = currentSchedule.comments?.[employee.id]?.[dateKey];
                             return (
                                 <div key={day} onMouseDown={() => handleMouseDown(rowIndex, day)} onMouseEnter={() => handleMouseEnter(rowIndex, day)} onContextMenu={(e) => handleCellContextMenu(e, employee.id, day)}
-                                    className={`w-8 h-full border-r border-slate-200 flex items-center justify-center text-[10px] font-bold select-none relative
+                                    className={`w-8 h-full border-r border-slate-200 flex items-center justify-center text-[9px] md:text-[10px] font-bold select-none relative
                                         ${!shift && isOff ? 'bg-sky-50' : ''} ${shift ? shift.color : 'bg-transparent'} ${shift?.textColor ? shift.textColor : 'text-slate-700'}
                                         ${selected ? 'ring-2 ring-inset ring-blue-600 bg-blue-100/50' : ''} ${isReadOnly ? 'cursor-default' : 'cursor-pointer'}
                                     `}>
@@ -607,12 +785,12 @@ export const RosterGrid: React.FC<Props> = ({
         {/* FOOTER - STICKY BOTTOM */}
         <div className="flex bg-slate-50 border-t border-slate-200 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] w-fit min-w-full sticky bottom-0 z-[60]">
              {/* Frozen Part - Sticky Left */}
-             <div className="sticky left-0 z-[70] flex-shrink-0 flex items-center justify-end px-2 font-bold text-[10px] text-slate-700 uppercase bg-slate-100 border-r border-slate-200 border-t overflow-hidden whitespace-nowrap" style={{ width: frozenLeftWidth, display: frozenLeftWidth > 0 ? 'flex' : 'none' }}>
+             <div className="sticky left-0 z-[70] flex-shrink-0 flex items-center justify-end px-2 font-bold text-[9px] md:text-[10px] text-slate-700 uppercase bg-slate-100 border-r border-slate-200 border-t overflow-hidden whitespace-nowrap" style={{ width: frozenLeftWidth, display: frozenLeftWidth > 0 ? 'flex' : 'none' }}>
                 Total Ativos / Ideal
              </div>
              
              {/* Scrollable Part - Moves Left */}
-             <div className="flex-shrink-0 flex items-center justify-end px-2 font-bold text-[10px] text-slate-700 uppercase bg-slate-100 border-r border-slate-200 border-t overflow-hidden whitespace-nowrap" style={{ width: scrollableLeftWidth }}>
+             <div className="flex-shrink-0 flex items-center justify-end px-2 font-bold text-[9px] md:text-[10px] text-slate-700 uppercase bg-slate-100 border-r border-slate-200 border-t overflow-hidden whitespace-nowrap" style={{ width: scrollableLeftWidth }}>
                 {frozenLeftWidth === 0 && "Total Ativos / Ideal"}
              </div>
 

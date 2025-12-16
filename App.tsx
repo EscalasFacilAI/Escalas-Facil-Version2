@@ -329,51 +329,63 @@ const App: React.FC = () => {
   return (
     <div ref={appContainerRef} className="flex flex-col h-screen w-screen bg-slate-100 overflow-hidden font-sans">
       <header className="bg-company-blue text-white shadow-lg z-40 flex flex-col shrink-0 print:hidden w-full relative">
-        <div className="flex items-center justify-between px-6 py-2 border-b border-blue-900 w-full min-w-0">
-            <div className="flex items-center gap-8 shrink-0">
+        <div className="flex flex-col md:flex-row items-center justify-between px-4 py-2 border-b border-blue-900 w-full min-w-0 gap-2">
+            <div className="flex items-center gap-4 w-full md:w-auto justify-between">
                  <div className="flex items-center gap-2">
                     <div className="w-8 h-8 bg-white rounded text-company-blue flex items-center justify-center font-bold text-xl">PS</div>
-                    <div className="hidden md:block"><h1 className="text-lg font-bold tracking-tight leading-none">ESCALA FÁCIL</h1><p className="text-[10px] text-blue-200 tracking-wider uppercase">PREVENT SENIOR</p></div>
+                    <div className="block"><h1 className="text-lg font-bold tracking-tight leading-none">ESCALA FÁCIL</h1><p className="text-[10px] text-blue-200 tracking-wider uppercase">PREVENT SENIOR</p></div>
                  </div>
-                 <div className="flex gap-1 bg-blue-900/50 p-1 rounded-lg">
-                     <button onClick={() => setCurrentView('roster')} className={`px-4 py-1.5 rounded text-xs font-bold uppercase transition-all ${currentView === 'roster' ? 'bg-white text-company-blue shadow' : 'text-blue-200 hover:text-white hover:bg-white/10'}`}>Escala Mensal</button>
-                     {isAdmin && (<button onClick={() => setCurrentView('database')} className={`px-4 py-1.5 rounded text-xs font-bold uppercase transition-all ${currentView === 'database' ? 'bg-white text-company-blue shadow' : 'text-blue-200 hover:text-white hover:bg-white/10'}`}>Cadastros</button>)}
-                     <button onClick={() => setCurrentView('reports')} className={`px-4 py-1.5 rounded text-xs font-bold uppercase transition-all ${currentView === 'reports' ? 'bg-white text-company-blue shadow' : 'text-blue-200 hover:text-white hover:bg-white/10'}`}>Relatórios</button>
+                 <div className="flex gap-1 bg-blue-900/50 p-1 rounded-lg overflow-x-auto max-w-[200px] md:max-w-none">
+                     <button onClick={() => setCurrentView('roster')} className={`px-4 py-1.5 rounded text-xs font-bold uppercase transition-all whitespace-nowrap ${currentView === 'roster' ? 'bg-white text-company-blue shadow' : 'text-blue-200 hover:text-white hover:bg-white/10'}`}>Escala</button>
+                     {isAdmin && (<button onClick={() => setCurrentView('database')} className={`px-4 py-1.5 rounded text-xs font-bold uppercase transition-all whitespace-nowrap ${currentView === 'database' ? 'bg-white text-company-blue shadow' : 'text-blue-200 hover:text-white hover:bg-white/10'}`}>Cadastros</button>)}
+                     <button onClick={() => setCurrentView('reports')} className={`px-4 py-1.5 rounded text-xs font-bold uppercase transition-all whitespace-nowrap ${currentView === 'reports' ? 'bg-white text-company-blue shadow' : 'text-blue-200 hover:text-white hover:bg-white/10'}`}>Relat.</button>
                  </div>
             </div>
 
-            <div className="flex-1 flex justify-center max-w-md mx-4 min-w-0">
+            <div className="flex-1 flex justify-center w-full md:max-w-md mx-0 md:mx-4 min-w-0">
                  <input type="text" placeholder="🔍 Buscar (ID ou Nome)" className="w-full bg-blue-900/50 border border-blue-700 rounded-full px-4 py-1 text-sm text-white placeholder-blue-300 outline-none focus:bg-blue-800 transition-colors" value={globalSearchTerm} onChange={e => setGlobalSearchTerm(e.target.value)} />
             </div>
 
-            {currentView === 'roster' && (
-                <div className="flex items-center bg-blue-900 rounded p-1 shrink-0">
-                    <button onClick={() => handleMonthChange(-1)} disabled={isLoading} className="p-1 hover:bg-white/10 rounded transition-colors text-white disabled:opacity-50"><span className="text-lg">‹</span></button>
-                    <span className="w-40 text-center font-bold text-sm tracking-wide select-none uppercase hidden md:inline-block">
-                        {isLoading ? 'CARREGANDO...' : `${MONTH_NAMES[schedule.month]} / ${schedule.year}`}
-                    </span>
-                    <button onClick={() => handleMonthChange(1)} disabled={isLoading} className="p-1 hover:bg-white/10 rounded transition-colors text-white disabled:opacity-50"><span className="text-lg">›</span></button>
+            <div className="flex items-center justify-between w-full md:w-auto gap-4">
+                {currentView === 'roster' && (
+                    <div className="flex items-center bg-blue-900 rounded p-1 shrink-0">
+                        <button onClick={() => handleMonthChange(-1)} disabled={isLoading} className="p-1 hover:bg-white/10 rounded transition-colors text-white disabled:opacity-50"><span className="text-lg">‹</span></button>
+                        <span className="w-28 md:w-40 text-center font-bold text-xs md:text-sm tracking-wide select-none uppercase inline-block">
+                            {isLoading ? 'CARREGANDO...' : `${MONTH_NAMES[schedule.month]} / ${schedule.year}`}
+                        </span>
+                        <button onClick={() => handleMonthChange(1)} disabled={isLoading} className="p-1 hover:bg-white/10 rounded transition-colors text-white disabled:opacity-50"><span className="text-lg">›</span></button>
+                    </div>
+                )}
+                <div className="flex items-center gap-3 shrink-0 ml-auto">
+                   <span className="text-xs text-blue-300 border-r border-blue-700 pr-3 mr-1 hidden lg:inline">Olá, {currentUser.name.split(' ')[0]}</span>
+                   {isAdmin && (<button onClick={() => setShowUserMgmt(true)} className="text-xs bg-blue-800 px-2 py-1 rounded hover:bg-blue-700 whitespace-nowrap">Usuários</button>)}
+                   <button onClick={handleLogout} className="text-xs text-red-300 hover:text-red-100 underline whitespace-nowrap">Sair</button>
                 </div>
-            )}
-            <div className="flex items-center gap-3 shrink-0 ml-4">
-               <span className="text-xs text-blue-300 border-r border-blue-700 pr-3 mr-1 hidden sm:inline">Olá, {currentUser.name.split(' ')[0]}</span>
-               {isAdmin && (<button onClick={() => setShowUserMgmt(true)} className="text-xs bg-blue-800 px-2 py-1 rounded hover:bg-blue-700">Usuários</button>)}
-               <button onClick={handleLogout} className="text-xs text-red-300 hover:text-red-100 underline">Sair</button>
             </div>
         </div>
+
         {currentView === 'roster' && (
-            <div className="bg-[#003399] px-6 py-2 flex items-center gap-4 lg:gap-6 shadow-inner shrink-0 text-white z-40 relative w-full flex-wrap overflow-visible">
-                <MultiSelect label="Unidade" options={activeUnits} selected={selectedUnits} onChange={setSelectedUnits} isAdmin={isAdmin} onEdit={() => setFilterManager({ isOpen: true, type: 'Unit' })} />
-                <MultiSelect label="Setor" options={activeSectors} selected={selectedSectors} onChange={setSelectedSectors} isAdmin={isAdmin} onEdit={() => setFilterManager({ isOpen: true, type: 'Sector' })} />
-                <MultiSelect label="Turno" options={activeShiftTypes} selected={selectedShiftTypes} onChange={setSelectedShiftTypes} isAdmin={isAdmin} onEdit={() => setFilterManager({ isOpen: true, type: 'Shift' })} />
-                <div className="flex-1 flex justify-end gap-3 items-end h-full pt-1 shrink-0">
-                    {isGenerating && (<div className="flex flex-col justify-center min-w-[150px] mr-4 hidden lg:flex"><div className="flex justify-between text-[10px] text-blue-200 mb-1"><span>Gerando...</span><span>{generationProgress.current} / {generationProgress.total}</span></div><div className="w-full bg-blue-900 rounded-full h-2 overflow-hidden"><div className="bg-emerald-400 h-full transition-all duration-300 ease-out" style={{ width: `${(generationProgress.current / generationProgress.total) * 100}%` }}></div></div></div>)}
-                    {hasUnsavedChanges && <span className="text-xs text-yellow-300 font-bold animate-pulse mr-2 mb-2">Alterações não salvas!</span>}
+            <div className="bg-[#003399] px-4 py-2 flex flex-nowrap items-center gap-4 shadow-inner shrink-0 text-white z-40 relative w-full overflow-x-auto no-scrollbar">
+                <div className="flex gap-4 min-w-max">
+                    <MultiSelect label="Unidade" options={activeUnits} selected={selectedUnits} onChange={setSelectedUnits} isAdmin={isAdmin} onEdit={() => setFilterManager({ isOpen: true, type: 'Unit' })} />
+                    <MultiSelect label="Setor" options={activeSectors} selected={selectedSectors} onChange={setSelectedSectors} isAdmin={isAdmin} onEdit={() => setFilterManager({ isOpen: true, type: 'Sector' })} />
+                    <MultiSelect label="Turno" options={activeShiftTypes} selected={selectedShiftTypes} onChange={setSelectedShiftTypes} isAdmin={isAdmin} onEdit={() => setFilterManager({ isOpen: true, type: 'Shift' })} />
+                </div>
+                <div className="flex-1 flex justify-end gap-3 items-center h-full min-w-max">
+                    {isGenerating && (<div className="flex flex-col justify-center min-w-[100px] mr-4 hidden lg:flex"><div className="flex justify-between text-[10px] text-blue-200 mb-1"><span>Gerando...</span><span>{generationProgress.current} / {generationProgress.total}</span></div><div className="w-full bg-blue-900 rounded-full h-2 overflow-hidden"><div className="bg-emerald-400 h-full transition-all duration-300 ease-out" style={{ width: `${(generationProgress.current / generationProgress.total) * 100}%` }}></div></div></div>)}
+                    {hasUnsavedChanges && <span className="text-xs text-yellow-300 font-bold animate-pulse mr-2 hidden md:inline">Salvar!</span>}
                     <Tooltip content="Salvar Alterações (Nuvem)"><button onClick={handleSaveData} disabled={isLoading} className={`p-2 rounded-full transition-all ${hasUnsavedChanges ? 'bg-yellow-600/50 animate-bounce' : 'hover:bg-white/10'} disabled:opacity-50`}><SaveIcon saved={isSaved} /></button></Tooltip>
                     <Tooltip content="Imprimir Escala"><button onClick={handlePrint} className="p-2 text-white hover:bg-white/10 rounded-full transition-all"><PrintIcon /></button></Tooltip>
                     {canEdit && (<Tooltip content="Limpar Escala"><button onClick={handleClearClick} className="p-2 text-red-300 hover:bg-red-500/20 hover:text-red-200 rounded-full transition-all"><TrashIcon /></button></Tooltip>)}
-                    <div className="w-px h-8 bg-blue-700 mx-2 hidden sm:block"></div>
-                    {canEdit && (<>{isAdmin && (<Tooltip content="Legendas & Turnos"><button onClick={() => setShowShifts(true)} className="p-2 text-white hover:bg-white/10 rounded-full"><TagIcon /></button></Tooltip>)}<Tooltip content="Regras da IA"><button onClick={() => setShowRules(true)} className="p-2 text-white hover:bg-white/10 rounded-full"><MegaphoneIcon /></button></Tooltip><Tooltip content="Dimensionamento"><button onClick={() => setShowStaffing(true)} className="p-2 text-white hover:bg-white/10 rounded-full"><ChartBarIcon /></button></Tooltip><button onClick={handleAutoGenerateClick} disabled={isGenerating || isLoading} className="ml-2 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded uppercase shadow border border-emerald-400 disabled:opacity-50 min-w-max">{isGenerating ? 'Parar' : 'Gerar (IA)'}</button></>)}
+                    <div className="w-px h-6 bg-blue-700 mx-2 hidden sm:block"></div>
+                    {canEdit && (
+                        <>
+                            {isAdmin && (<Tooltip content="Legendas & Turnos"><button onClick={() => setShowShifts(true)} className="p-2 text-white hover:bg-white/10 rounded-full"><TagIcon /></button></Tooltip>)}
+                            <Tooltip content="Regras da IA"><button onClick={() => setShowRules(true)} className="p-2 text-white hover:bg-white/10 rounded-full"><MegaphoneIcon /></button></Tooltip>
+                            <Tooltip content="Dimensionamento"><button onClick={() => setShowStaffing(true)} className="p-2 text-white hover:bg-white/10 rounded-full"><ChartBarIcon /></button></Tooltip>
+                            <button onClick={handleAutoGenerateClick} disabled={isGenerating || isLoading} className="ml-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] md:text-xs font-bold rounded uppercase shadow border border-emerald-400 disabled:opacity-50 whitespace-nowrap min-w-fit">{isGenerating ? 'Parar' : 'Gerar (IA)'}</button>
+                        </>
+                    )}
                 </div>
             </div>
         )}
@@ -395,7 +407,7 @@ const App: React.FC = () => {
           </div>
       </div>
 
-      <main className="flex-1 flex flex-col overflow-hidden relative print:p-0 print:overflow-visible bg-white z-0 w-full h-full">
+      <main className="flex-1 flex flex-col overflow-hidden relative print:p-0 print:overflow-visible bg-white z-0 w-full h-full min-w-0">
           {isLoading && currentView === 'roster' ? (
              <div className="flex-1 flex items-center justify-center flex-col">
                 <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>

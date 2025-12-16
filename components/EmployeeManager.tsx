@@ -50,7 +50,7 @@ export const EmployeeManager: React.FC<Props> = ({ employees, setEmployees, onCl
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl flex flex-col h-[80vh]">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl flex flex-col h-[90vh] md:h-[80vh]">
         <div className="flex items-center justify-between p-4 border-b">
           <h3 className="text-lg font-bold text-company-blue uppercase tracking-wider flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
@@ -65,9 +65,9 @@ export const EmployeeManager: React.FC<Props> = ({ employees, setEmployees, onCl
           </button>
         </div>
 
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
             {/* Form Side */}
-            <div className="w-1/3 bg-slate-50 p-4 border-r overflow-y-auto">
+            <div className="w-full md:w-1/3 bg-slate-50 p-4 border-b md:border-b-0 md:border-r overflow-y-auto max-h-[40vh] md:max-h-full">
                 <h4 className="font-bold text-sm text-slate-700 mb-3 uppercase">Novo Cadastro</h4>
                 <div className="space-y-3">
                     <div>
@@ -138,8 +138,8 @@ export const EmployeeManager: React.FC<Props> = ({ employees, setEmployees, onCl
             <div className="flex-1 p-4 overflow-y-auto bg-white">
                 <div className="grid grid-cols-1 gap-2">
                     {employees.map(emp => (
-                    <div key={emp.id} className="flex items-center justify-between p-3 bg-white rounded border border-slate-200 hover:border-blue-400 transition-colors shadow-sm group">
-                        <div className="grid grid-cols-4 gap-4 w-full items-center">
+                    <div key={emp.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 bg-white rounded border border-slate-200 hover:border-blue-400 transition-colors shadow-sm group gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 w-full items-center">
                             <div className="col-span-1">
                                 <p className="font-bold text-slate-800 text-sm truncate uppercase">{emp.name}</p>
                                 <p className="text-[10px] text-slate-500 truncate">{emp.role}</p>
@@ -152,7 +152,7 @@ export const EmployeeManager: React.FC<Props> = ({ employees, setEmployees, onCl
                                 <p className="text-xs text-slate-600 truncate">CPF: {emp.cpf}</p>
                                 <p className="text-[10px] text-slate-400 truncate">BH: {emp.bankHoursBalance}</p>
                             </div>
-                            <div className="flex justify-end">
+                            <div className="flex justify-end col-span-1">
                                 <button 
                                 onClick={() => handleRemove(emp.id)}
                                 className="text-red-400 hover:text-red-600 p-2 rounded hover:bg-red-50"

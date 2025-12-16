@@ -1,10 +1,10 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>EscalaFácil AI</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -19,7 +19,7 @@
                 900: '#134e4a',
               },
               'company': {
-                blue: '#002060', // Azul escuro estilo Prevent Senior
+                blue: '#002060', 
                 light: '#e6f0ff',
               }
             }
@@ -27,6 +27,7 @@
         }
       }
     </script>
+
     <style>
       /* Custom scrollbar for the grid */
       .roster-scroll::-webkit-scrollbar {
@@ -66,52 +67,47 @@
             width: 100%;
             height: 100%;
             overflow: visible !important;
-            zoom: 0.8; /* Scale down slightly to fit more columns */
+            zoom: 0.8;
         }
         #root {
             width: 100%;
         }
-        /* Ensure background colors print */
         * {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
         }
-        
-        /* Hide UI elements */
         button, input[type="file"], .print\:hidden {
             display: none !important;
         }
-        
-        /* Expand containers */
         .overflow-auto, .overflow-hidden {
             overflow: visible !important;
             height: auto !important;
         }
       }
     </style>
-  <!-- Import Map para React e Firebase -->
+
   <script type="importmap">
-{
-  "imports": {
-    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-    "react-dom": "https://esm.sh/react-dom@18.2.0",
-    "react": "https://esm.sh/react@18.2.0",
-    "@google/genai": "https://esm.sh/@google/genai@0.1.1",
-    "firebase/app": "https://esm.sh/firebase@10.8.0/app",
-    "firebase/firestore": "https://esm.sh/firebase@10.8.0/firestore",
-    "firebase/": "https://esm.sh/firebase@^12.7.0/",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/"
+  {
+    "imports": {
+      "react": "https://esm.sh/react@18.2.0",
+      "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+      "react-dom": "https://esm.sh/react-dom@18.2.0",
+      "firebase/app": "https://esm.sh/firebase@10.8.0/app",
+      "firebase/firestore": "https://esm.sh/firebase@10.8.0/firestore",
+      "firebase/auth": "https://esm.sh/firebase@10.8.0/auth",
+      "firebase/analytics": "https://esm.sh/firebase@10.8.0/analytics"
+    }
   }
-}
-</script>
-  <!-- Babel para compilar JSX no navegador -->
+  </script>
+
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<link rel="stylesheet" href="/index.css">
+  
+  <link rel="stylesheet" href="./index.css">
 </head>
-  <body class="bg-slate-100 text-slate-900 font-sans antialiased overflow-hidden">
+
+<body class="bg-slate-100 text-slate-900 font-sans antialiased overflow-hidden">
     <div id="root"></div>
-    <!-- Ponto de entrada da aplicação. Note o type="text/babel" -->
-  <script type="text/babel" data-type="module" src="/index.js"></script>
+
+    <script type="text/babel" data-type="module" src="./index.js"></script>
 </body>
 </html>

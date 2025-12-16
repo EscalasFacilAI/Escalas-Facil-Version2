@@ -200,6 +200,24 @@ export const RosterGrid: React.FC<Props> = ({
             return;
         }
 
+        // Undo (Ctrl+Z) / Redo (Ctrl+Y or Ctrl+Shift+Z)
+        if ((e.ctrlKey || e.metaKey) && !isReadOnly) {
+            if (e.key.toLowerCase() === 'z') {
+                e.preventDefault();
+                if (e.shiftKey) {
+                    onRedo?.();
+                } else {
+                    onUndo?.();
+                }
+                return;
+            }
+            if (e.key.toLowerCase() === 'y') {
+                e.preventDefault();
+                onRedo?.();
+                return;
+            }
+        }
+
         // Delete / Backspace: Clear Selected Cells
         if (e.key === 'Delete' || e.key === 'Backspace') {
             if (!selection || isReadOnly) return;
@@ -333,7 +351,7 @@ export const RosterGrid: React.FC<Props> = ({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
 
-  }, [focusedCell, selection, selectionAnchor, sortedEmployees, currentSchedule, isReadOnly, daysInMonth, containerHeight, shifts]);
+  }, [focusedCell, selection, selectionAnchor, sortedEmployees, currentSchedule, isReadOnly, daysInMonth, containerHeight, shifts, onUndo, onRedo]);
 
 
   // --- EVENTS ---

@@ -1,12 +1,11 @@
-
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { INITIAL_EMPLOYEES, INITIAL_SHIFTS, MONTH_NAMES, INITIAL_UNITS, INITIAL_SECTORS, INITIAL_SHIFT_TYPES } from './constants';
+import { INITIAL_UNITS, INITIAL_SECTORS, INITIAL_SHIFT_TYPES, MONTH_NAMES } from './constants';
 import { Employee, MonthlySchedule, Shift, AIRulesConfig, StaffingConfig, User } from './types';
 import { EmployeeManager } from './components/EmployeeManager';
 import { ShiftManager } from './components/ShiftManager';
 import { RosterGrid } from './components/RosterGrid';
 import { RulesModal } from './components/RulesModal';
-import { ImportModal } from './components/ImportModal';
+// ImportModal removido pois não estava sendo utilizado no render
 import { StaffingModal } from './components/StaffingModal';
 import { LoginScreen } from './components/LoginScreen';
 import { UserManagement } from './components/UserManagement';
@@ -23,7 +22,7 @@ import { ConfirmationModal } from './components/ConfirmationModal';
 import { DatabaseService } from './services/databaseService';
 import { getSession, destroySession } from './services/securityService';
 
-// Icons (Mesmos ícones)
+// Icons
 const SaveIcon = ({ saved }: { saved: boolean }) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={`w-5 h-5 ${saved ? 'text-green-400' : 'text-white'}`}>
         <path strokeLinecap="round" strokeLinejoin="round" d={saved ? "M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" : "M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"} />
@@ -84,16 +83,20 @@ const App: React.FC = () => {
           if (sessionUser) setCurrentUser(sessionUser);
 
           // 2. Load Base Data (Employees, Shifts, Settings)
-          const [loadedEmps, loadedShifts, settings] = await Promise.all([
-              DatabaseService.loadEmployees(),
-              DatabaseService.loadShifts(),
-              DatabaseService.loadSettings()
-          ]);
+          try {
+              const [loadedEmps, loadedShifts, settings] = await Promise.all([
+                  DatabaseService.loadEmployees(),
+                  DatabaseService.loadShifts(),
+                  DatabaseService.loadSettings()
+              ]);
 
-          setEmployees(loadedEmps);
-          setShifts(loadedShifts);
-          if (settings.aiRules) setAiRules(settings.aiRules);
-          if (settings.staffing) setStaffingConfig(settings.staffing);
+              setEmployees(loadedEmps || []);
+              setShifts(loadedShifts || []);
+              if (settings?.aiRules) setAiRules(settings.aiRules);
+              if (settings?.staffing) setStaffingConfig(settings.staffing);
+          } catch (error) {
+              console.error("Erro ao carregar dados iniciais:", error);
+          }
           
           setIsLoading(false);
       };
@@ -106,11 +109,15 @@ const App: React.FC = () => {
   useEffect(() => {
       const loadMonth = async () => {
           setIsLoading(true); // Show loading spinner
-          const monthData = await DatabaseService.loadMonthlySchedule(currentDate.getMonth(), currentDate.getFullYear());
-          setScheduleState(monthData);
-          setHistoryPast([]); // Clear undo history on month change
-          setHistoryFuture([]);
-          setHasUnsavedChanges(false);
+          try {
+              const monthData = await DatabaseService.loadMonthlySchedule(currentDate.getMonth(), currentDate.getFullYear());
+              setScheduleState(monthData);
+              setHistoryPast([]); // Clear undo history on month change
+              setHistoryFuture([]);
+              setHasUnsavedChanges(false);
+          } catch (error) {
+              console.error("Erro ao carregar escala mensal:", error);
+          }
           setIsLoading(false);
       };
       loadMonth();
@@ -143,17 +150,22 @@ const App: React.FC = () => {
   // --- SAVE LOGIC (SHARDED) ---
   const handleSaveData = async () => {
       setIsLoading(true);
-      // Save everything in parallel
-      await Promise.all([
-          DatabaseService.saveEmployees(employees),
-          DatabaseService.saveShifts(shifts),
-          DatabaseService.saveSettings(aiRules, staffingConfig),
-          DatabaseService.saveMonthlySchedule(schedule) // Saves only current month file
-      ]);
-      
-      setIsSaved(true);
-      setHasUnsavedChanges(false);
-      setTimeout(() => setIsSaved(false), 2000);
+      try {
+          // Save everything in parallel
+          await Promise.all([
+              DatabaseService.saveEmployees(employees),
+              DatabaseService.saveShifts(shifts),
+              DatabaseService.saveSettings(aiRules, staffingConfig),
+              DatabaseService.saveMonthlySchedule(schedule) // Saves only current month file
+          ]);
+          
+          setIsSaved(true);
+          setHasUnsavedChanges(false);
+          setTimeout(() => setIsSaved(false), 2000);
+      } catch (error) {
+          alert("Erro ao salvar dados. Tente novamente.");
+          console.error(error);
+      }
       setIsLoading(false);
   };
 
@@ -180,7 +192,7 @@ const App: React.FC = () => {
   const handleLogin = (user: User) => { setCurrentUser(user); };
   const handleLogout = () => { 
       if (hasUnsavedChanges) {
-          if(!confirm("Você tem alterações não salvas. Tem certeza que deseja sair e perder os dados?")) return;
+          if(!window.confirm("Você tem alterações não salvas. Tem certeza que deseja sair e perder os dados?")) return;
       }
       destroySession();
       setCurrentUser(null);
@@ -193,7 +205,7 @@ const App: React.FC = () => {
 
   const handleMonthChange = async (offset: number) => {
     if (hasUnsavedChanges) {
-        if (!confirm("Existem alterações não salvas. Mudar de mês sem salvar descartará as mudanças. Continuar?")) return;
+        if (!window.confirm("Existem alterações não salvas. Mudar de mês sem salvar descartará as mudanças. Continuar?")) return;
     }
     // Update State -> Triggers useEffect
     setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + offset, 1));
@@ -238,7 +250,7 @@ const App: React.FC = () => {
       if (JSON.stringify(sortedSectors) !== JSON.stringify(sectors)) setSectors(sortedSectors);
       if (JSON.stringify(sortedTypes) !== JSON.stringify(shiftTypesList)) setShiftTypesList(sortedTypes);
       
-  }, [employees]);
+  }, [employees, units, sectors, shiftTypesList]);
 
   // Derived Filters
   const availableEmployees = useMemo(() => {
@@ -307,7 +319,13 @@ const App: React.FC = () => {
   }
 
   const handleAutoGenerateClick = () => {
-      if (!process.env.API_KEY) { alert("API Key não encontrada."); return; }
+      // NOTE: For React/Frontend, use process.env.REACT_APP_API_KEY
+      const apiKey = process.env.REACT_APP_API_KEY || process.env.VITE_API_KEY;
+      
+      if (!apiKey) { 
+          alert("API Key não encontrada. Verifique o arquivo .env"); 
+          return; 
+      }
       if (filteredEmployees.length === 0) { alert("Nenhum colaborador visível."); return; }
       setShowGenerationScope(true);
   }
@@ -317,8 +335,19 @@ const App: React.FC = () => {
       if (targetEmployees.length === 0) return;
       setIsGenerating(true);
       setGenerationProgress({ current: 0, total: targetEmployees.length });
-      const result = await generateAISchedule(targetEmployees, shifts, schedule.month, schedule.year, aiRules, (current, total) => setGenerationProgress({ current, total }));
-      if (result) { setSchedule(prev => ({ ...prev, assignments: { ...prev.assignments, ...result } })); setHasUnsavedChanges(true); } else { alert("Erro ao gerar escala."); }
+      
+      try {
+        const result = await generateAISchedule(targetEmployees, shifts, schedule.month, schedule.year, aiRules, (current, total) => setGenerationProgress({ current, total }));
+        if (result) { 
+            setSchedule(prev => ({ ...prev, assignments: { ...prev.assignments, ...result } })); 
+            setHasUnsavedChanges(true); 
+        } else { 
+            alert("Erro ao gerar escala."); 
+        }
+      } catch (e) {
+        console.error(e);
+        alert("Erro crítico na geração da escala.");
+      }
       setIsGenerating(false);
   };
 
